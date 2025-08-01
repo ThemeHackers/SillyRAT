@@ -109,4 +109,4 @@ Twitter: <a href="//twitter.com/hash3liZer">@hash3liZer</a><br>
 Discord: TheFlash2k#0407
 
 ### Support the improvement 
-Instagram: <a href="https://www.instagram.com/_tthemzdl5678/">@hash3liZer</a><br>
+Instagram: <a href="https://www.instagram.com/_tthemzdl5678/">_tthemzdl5678</a><br>

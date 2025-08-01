@@ -464,7 +464,7 @@ class COMMCENTER:
                     if not os.path.isdir(dirname):
                         os.mkdir(dirname)
                     def get_safe_timestamp():
-                        return datetime.now().strftime("%d-%m-%Y_%H-%M-%S.txt") 
+                        return datetime.now().strftime("%d-%m-%Y_%H-%M-%S") 
                     fullpath = os.path.join(dirname, f"{get_safe_timestamp()}.txt")
                     fl = open( fullpath, 'w' )
                     fl.write( result )

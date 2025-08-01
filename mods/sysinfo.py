@@ -1,4 +1,7 @@
-
+import platform
+import psutil
+import tabulate
+from datetime import datetime
 
 class SYSINFO:
 

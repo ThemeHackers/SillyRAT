@@ -72,7 +72,7 @@ Replace your IP Address and Port on above commands.
 ### Running Server
 The server must be executed on Linux. You can buy a VPS or Cloud Server for connections. For the record, the server doesn't store any session from last run. So, all the progress will lost once the server application gets terminated. Running your server:
 ```
-$ python3 sillyrat.py bind --address 0.0.0.0 --port 2999
+$ python3 server.py bind --address 0.0.0.0 --port 2999
 ```
 
 ### Connections
@@ -107,3 +107,6 @@ $ help COMMAND
 ### Support
 Twitter: <a href="//twitter.com/hash3liZer">@hash3liZer</a><br>
 Discord: TheFlash2k#0407
+
+### Support the improvement 
+Instagram: <a href="https://www.instagram.com/_tthemzdl5678/">@hash3liZer</a><br>
